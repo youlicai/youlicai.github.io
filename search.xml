@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<search>
+  <entry>
+    <title><![CDATA[以太坊-部署、调用合约]]></title>
+    <url>%2F2018%2F10%2F01%2F%E4%BB%A5%E5%A4%AA%E5%9D%8A%EF%BC%88%E4%B8%89%EF%BC%89-%E9%83%A8%E7%BD%B2%E5%90%88%E7%BA%A6%2F</url>
+    <content type="text"><![CDATA[项目目的通过合约进行数据输入和输出 前期准备创建项目==Contract ==contracts 存放合约文件 ==src 项目代码 ==tool 加载、编译智能合约工具代码 准备环境 下载 web3 npm install web3@^0.20.0 下载 solc 智能合约编译器 npm install solc 创建节点 geth –datadir data –networkid 1555 –gcmode archive –rpc –rpcaddr 127.0.0.1 –rpcport 8545 –rpcapi “db,eth,net,web3,personal” console 项目案例-Helloword合约代码 helloword.sol pragma solidity ^0.4.0; contract helloworld { string content; function setContent(string str){ content=content+str; } function getContent() constant public returns (string){ return content; } } 客户端调用合约代码 const fs = require('fs') const solc = require('solc') //编译合约 let source = fs.readFileSync("../contracts/Helloword.sol", 'utf8') console.log('compiling contract...'); let compiledContract = solc.compile(source); console.log('done'); for (let contractName in compiledContract.contracts) { var bytecode = compiledContract.contracts[contractName].bytecode; var abi = JSON.parse(compiledContract.contracts[contractName].interface); } const Web3 = require ('web3'); const web3 = new Web3(new Web3.providers.HttpProvider("http://127.0.0.1:8545")); web3.eth.defaultAccount=web3.eth.coinbase; var MyContract = web3.eth.contract(abi); console.log('start input') MyContract.at('0x804f42e0b55e00076eba163464035c7d1808e84b').setContent("helloword"); console.log('output:') console.log(MyContract.at('0x804f42e0b55e00076eba163464035c7d1808e84b').getContent()); 智能合约编译、部署代码 const fs = require('fs') const solc = require('solc') //编译合约 let source = fs.readFileSync("../../contracts/helloword.sol", 'utf8') console.log('compiling contract...'); let compiledContract = solc.compile(source); console.log('done'); for (let contractName in compiledContract.contracts) { var bytecode = compiledContract.contracts[contractName].bytecode; var abi = JSON.parse(compiledContract.contracts[contractName].interface); } console.log(bytecode) console.log(abi) //部署 const Web3 = require ('web3'); const web3 = new Web3(new Web3.providers.HttpProvider("http://127.0.0.1:8545")); let gasEstimate = web3.eth.estimateGas({data: '0x' + bytecode}); console.log('gasEstimate: ' + gasEstimate) console.log('account : '+web3.eth.accounts[0]) let MyContract = web3.eth.contract(abi); console.log('deploying contract...'); var myContractReturned = MyContract.new([], { from: web3.eth.accounts[0], data: '0x' + bytecode, gas: gasEstimate+50000 }, function(err, myContract){ try{ addr=myContract.address; if (typeof(addr) !== 'undefined') { console.log('Contract mined! address: ' + myContract.address + ' transactionHash: ' + myContract.transactionHash); } }catch(err){ } if(!err){ console.log('success'); }else{ console.log(err); } }); 运行 （运行之前，保证挖矿执行中） 编译智能合约代码 运行成功 执行客户端代码 成功！]]></content>
+      <categories>
+        <category>区块链</category>
+      </categories>
+      <tags>
+        <tag>区块链</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title><![CDATA[以太坊-搭建私有网络节点群]]></title>
+    <url>%2F2018%2F09%2F02%2F%E4%BB%A5%E5%A4%AA%E5%9D%8A%EF%BC%88%E4%BA%8C%EF%BC%89-%E6%90%AD%E5%BB%BA%E7%A7%81%E6%9C%89%E7%BD%91%E7%BB%9C%E8%8A%82%E7%82%B9%E7%BE%A4%2F</url>
+    <content type="text"><![CDATA[前言搭建网络节点群，可以是各个节点相互监听，进行交易 搭建要求 各个节点不能在同一个数据目录 使用相同的genesis文件 每个实例运行都有独立的端口 禁用ipc networkid要相同 开始搭建启动第一个节点 初始化（忽略，参考上一节） 启动geth –datadir data –networkid 1550 –ipcdisable –port 61910 –rpcport 8200 –gcmode archive console 创建账号（忽略，参考上一节）,得到地址A 启动挖矿、停止挖矿（忽略，参考上一节） 获取当前节点enodeadmin.nodeInfo.enode会得到类似这一串“enode://2261c433ed5d12924f727b61bf4084f22f4199b430115827c8eae3bb210c0dd5b3dd7df8dc13d8ca80c80f4a36e25c7bc7737737001d0b09324ee43ca6b9d7f8@192.168.1.2:61911”保存，后续将使用 [ 注意：IP要修改成内网IP，切记 ] 启动第二个节点 初始化（忽略，参考上一节） 启动geth –datadir data1 –networkid 1550 –ipcdisable –port 61911 –rpcport 8201 –gcmode archive console 创建账号（忽略，参考上一节）,得到地址B 加入节点群admin.addPeer(上面保存的enode字符串) 测试节点是否联通 在第一个节点输入net.peerCount返回非0的话，说明联通成功 A节点往B节点发送以太币eth.sendTransaction({from: “地址A”, to: “地址B”, value: web3.toWei(1, “ether”)})发送成功，但是你在B节点查看余额时还是0.应为只是单纯的执行了sendTransaction转账操作，未进行挖矿。 A节点执行挖矿。然后在B节点查看余额，会有1个ether。 基本操作就是这些了，主要有两点： 创建区块链私有网络,并在网络中,建立自己的节点集群 在接点集群中,通过一个节点的账户向网络中的另外一个节点的账户转了1个以太坊币,交易成功. 文中细节未展示,细节问题可以百度、google]]></content>
+      <categories>
+        <category>区块链</category>
+      </categories>
+      <tags>
+        <tag>区块链</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title><![CDATA[以太坊-搭建私有链]]></title>
+    <url>%2F2018%2F08%2F22%2F%E4%BB%A5%E5%A4%AA%E5%9D%8A%EF%BC%88%E4%B8%80%EF%BC%89-%E6%90%AD%E5%BB%BA%E7%A7%81%E6%9C%89%E9%93%BE%2F</url>
+    <content type="text"><![CDATA[Geth下载安装下载地址 环境搭建我的项目目录是H:\ETH，目录结构如下： genesis.json文件，内容如下： { "config": { "chainId": 15, "homesteadBlock": 0, "eip155Block": 0, "eip158Block": 0 }, "coinbase" : "0x0000000000000000000000000000000000000000", "difficulty" : "0x40000", "extraData" : "", "gasLimit" : "0xffffffff", "nonce" : "0x0000000000000042", "mixhash" : "0x0000000000000000000000000000000000000000000000000000000000000000", "parentHash" : "0x0000000000000000000000000000000000000000000000000000000000000000", "timestamp" : "0x00", "alloc": { } } genesis.json是创世区块配置文件，通过此配置让我们很容易挖矿以方便测试，具体每个字段的含义可暂时忽略！ 在命令行窗口进入到H:\ETH目录下 执行创世区块的初始化命令如下： geth --datadir data init genesis.json 执行结果如下： 此时在ETH目录下会生成data目录，data目录又包含geth和keystore目录，geth目录存储区块数据，keystore目录则保存账户信息。 启动节点连接私有测试网络命令如下: geth --datadir data --networkid 15 --nodiscover --gcmode archive console –networkid 123参数表示区块链网络ID标识。 –nodiscover参数表示节点私有。 –gcmode archive 表示即时将内存中的数据写入到文件中，否则重启节点可能会导致区块高度归零而丢失数据。 console参数表示进入geth控制台。 Geth交互使用创建新账户 personal.newAccount("123") “123”为密码，千万不要忘记密码！输入指令，回车。 绿色的字符串就是你的账户地址,同时会在keystore目录下产生这个文件： 为了安全，该文件建议离线存储，将keystore文件移走，保存在u盘中。打算进行转账时，将keystore文件移回到原位置即可。 查询账户列表 eth.accounts 查询账户余额 eth.getBalance(eth.accounts[0]) 转账 eth.sendTransaction({from:"0x1e173732f1d194c95f9293f120a9b6bab05a2d23",to:"0x587e57a516730381958f86703b1f8e970ff445d9",value:web3.toWei(3,"ether")}) 这个是以太坊的一个保护机制，每隔一段时间账户就会自动锁定，这个时候任何以太币在账户之间的转换都会被拒绝，除非把该账户解锁. 解锁 personal.unlockAccount("0x1e173732f1d194c95f9293f120a9b6bab05a2d23") 解锁成功 继续转账 余额不足，嘿嘿。 启动或停止挖矿 miner.start(); miner.stop(); 挖到1个区块时停止挖矿，挖矿所得默认进入第一个账户里。 eth.getBalance(eth.accounts[0]) 会发现这个账户里多了很多币 换另一个用户挖矿miner.setEtherbase(“0x3e5b31e581546f2900c0f3289153c788c92a2b41”); 到此你可以基本了解以太坊了，深入网上查看其它材料。下一篇,我会讲一讲如何搭建私有网络节点群:]]></content>
+      <categories>
+        <category>区块链</category>
+      </categories>
+      <tags>
+        <tag>区块链</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title><![CDATA[Java String 字符串初始化]]></title>
+    <url>%2F2018%2F08%2F08%2FJavaString%2F</url>
+    <content type="text"><![CDATA[本文摘录于 占小狼，写的不错。 字符串可以通过两种方式进行初始化：字面常量和String对象。 一、字面常量 public class Test { public static void main(String[] args) { String a = "java"; String b = "java"; String c = "ja" + "va"; } } 通过 “javap -c” 命令查看字节码指令实现： 其中ldc指令将int、float和String类型的常量值从常量池中推送到栈顶，所以a和b都指向常量池的”java”字符串。通过指令实现可以发现：变量a、b和c都指向常量池的 “java” 字符串，表达式 “ja” + “va” 在编译期间会把结果值”java”直接赋值给c。 二、String对象 public class Test { public static void main(String[] args) { String a = "java"; String b = new String("java"); } } 字节码实现如下： 其中3 ~ 9行指令对应代码 String c = new String(“java”); 实现： 1、第3行new指令，在Java堆上为String对象申请内存； 2、第7行ldc指令，尝试从常量池中获取”java”字符串，如果常量池中不存在，则在常量池中新建”java”字符串，并返回； 3、第9行invokespecial指令，调用构造方法，初始化String对象。 其中String对象中使用char数组存储字符串，变量a指向常量池的”java”字符串，变量c指向Java堆的String对象，且该对象的char数组指向常量池的”java”字符串，所以很显然 a != c，如下图所示： 三、字面量 + String对象 public class StringTest { public static void main(String[] args) { String a = "hello "; String b = "world"; String c = a + b; String d = "hello world"; } } 字节码实现如下： 其中6 ~ 21行指令对应代码 String c = a + b; 实现： 1、第6行new指令，在Java堆上为StringBuilder对象申请内存； 2、第10行invokespecial指令，调用构造方法，初始化StringBuilder对象； 3、第14、18行invokespecial指令，调用append方法，添加a和b字符串； 4、第21行invokespecial指令，调用toString方法，生成String对象。 通过指令实现可以发现，字符串变量的连接动作，在编译阶段会被转化成StringBuilder的append操作，变量c最终指向Java堆上新建String对象，变量d指向常量池的”hello world”字符串，所以 c != d。 不过有种特殊情况，当final修饰的变量发生连接动作时，虚拟机会进行优化，将表达式结果直接赋值给目标变量： public class StringTest { public static void main(String[] args) { final String a = “hello “; final String b = “world”; String c = a + b; String d = “hello world”; }}指令实现如下：]]></content>
+      <categories>
+        <category>Java</category>
+      </categories>
+      <tags>
+        <tag>String</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title><![CDATA[String中的加号和字符串拼接的理解]]></title>
+    <url>%2F2018%2F08%2F07%2FString%E4%B8%AD%E7%9A%84%E5%8A%A0%E5%8F%B7%E5%92%8C%E5%AD%97%E7%AC%A6%E4%B8%B2%E6%8B%BC%E6%8E%A5%E7%9A%84%E7%90%86%E8%A7%A3%2F</url>
+    <content type="text"><![CDATA[String str1 = new String(“abc”);String str2 = “abc”;String str3 = “a” + “b” + “c”;String str4 = “ab”;String str5 = str4+ “c”;System.out.println(str1== str2); //输出falseSystem.out.println(str2 == str3); //输出trueSystem.out.println(str3 == str1); //输出falseSystem.out.println(str2 == str5); //输出falsestr1 通过new关键字来生成对象是在堆区进行的； str2 在编译期间生成了字面常量和符号引用，运行期间字面常量”abc”被存储在运行时常量池（当然只保存了一份）。通过这种方式来将String对象跟引用绑定的话，JVM执行引擎会先在运行时常量池查找是否存在相同的字面常量，如果存在，则直接将引用指向已经存在的字面常量；否则在运行时常量池开辟一个空间来存储该字面常量，并将引用指向该字面常量。 str3 对于直接相加字符串，效率很高，因为在编译器便确定了它的值，也就是说形如”a”+”b”+”c”的字符串相加，在编译期间便被优化成了”abc”。 str5 是用str4+”c”的形式。这个时候str5的值不是编译时候能确定的，它已经不再会往常量池存放，是一个字符串变量。这个时候，底层是通过StringBuffer的append方法，最终返回new的String。所以str5的地址只的不是常量池区域的地址，而是指向堆内存中的区域。]]></content>
+      <categories>
+        <category>Java</category>
+      </categories>
+      <tags>
+        <tag>String</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title><![CDATA[浅谈String]]></title>
+    <url>%2F2018%2F08%2F07%2F%E6%B5%85%E8%B0%88String%2F</url>
+    <content type="text"><![CDATA[String 类想要了解一个类，那就看它的源码。 public final class String implements java.io.Serializable, Comparable, CharSequence { private final char value[]; private int hash; private static final long serialVersionUID = -6849794470754667710L; private static final ObjectStreamField[] serialPersistentFields = new ObjectStreamField[0]; public String() { this.value = "".value; } public String(String original) { this.value = original.value; this.hash = original.hash; } ........... public String substring(int beginIndex) { if (beginIndex < 0) { throw new StringIndexOutOfBoundsException(beginIndex); } int subLen = value.length - beginIndex; if (subLen < 0) { throw new StringIndexOutOfBoundsException(subLen); } return (beginIndex == 0) ? this : new String(value, beginIndex, subLen); } public String concat(String str) { int otherLen = str.length(); if (otherLen == 0) { return this; } int len = value.length; char buf[] = Arrays.copyOf(value, len + otherLen); str.getChars(buf, len); return new String(buf, true); } ........... } 从中看出三点： String是final类，意味着String类不能被继承，并且它的成员方法都默认为final方法。 String内部结构是final char数组，本质上字符串是通过char数组保存数据的。 String相关的substring、concat等操作都是返回新的String，原字符串没有改变。 这里总结一下：“String对象一旦被创建就是固定不变的了，对String对象的任何改变都不影响到原对象，相关的任何change操作都会生成新的对象”。 字符串常量池字符串的分配和其他对象分配一样，是需要消耗时间和空间，而且字符串我们使用的非常多。JVM为了提高性能和减少内存的开销，在实例化字符串的时候进行了一些优化：使用字符串常量池。每当我们创建字符串常量时，JVM会首先检查字符串常量池，如果该字符串已经存在常量池中，那么就直接返回常量池中的实例引用。如果字符串不存在常量池中，就会实例化该字符串并且将其放到常量池中。由于String字符串的不可变性我们可以十分肯定常量池中一定不存在两个相同的字符串（这点对理解上面至关重要）。 Java中的常量池，实际上分为两种形态：静态常量池和运行时常量池。所谓静态常量池，即*.class文件中的常量池，class文件中的常量池不仅仅包含字符串(数字)字面量，还包含类、方法的信息，占用class文件绝大部分空间。而运行时常量池，则是jvm虚拟机在完成类装载操作后，将class文件中的常量池载入到内存中，并保存在方法区中，我们常说的常量池，就是指方法区中的运行时常量池。 String a = "javaString"; String b = "javaString"; a、b和字面上的javaString都是指向JVM字符串常量池中的”javaString”对象，他们指向同一个对象。 String c = new String(“javaString”);new关键字一定会产生一个对象javaString（注意这个javaString和上面的javaString不同），同时这个对象是存储在堆中。所以上面应该产生了两个对象：保存在栈中的c和保存堆中javaString。但是在Java中根本就不存在两个完全一模一样的字符串对象。故堆中的javaString应该是引用字符串常量池中javaString。所以c、javaString、池javaString的关系应该是：c—&gt;javaString—&gt;池javaString。整个关系如下：]]></content>
+      <categories>
+        <category>Java</category>
+      </categories>
+      <tags>
+        <tag>String</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title><![CDATA[Github搭建个人博客（一）]]></title>
+    <url>%2F2018%2F08%2F02%2FGithub%E6%90%AD%E5%BB%BA%E4%B8%AA%E4%BA%BA%E5%8D%9A%E5%AE%A2%EF%BC%88%E4%B8%80%EF%BC%89%2F</url>
+    <content type="text"><![CDATA[一、环境准备安装Node.jshttps://nodejs.org/en/download/current/安装过程不介绍了，安装完成后，打开cmd 表示安装成功，否则检查下node.js的环境变量是否正确。 安装Githttps://git-scm.com/download/win 二、Github配置创建一个项目 Repository格式：用户名.github.io。 生成添加秘钥$ ssh-keygen -t rsa -C “Github的注册邮箱地址” 一路Enter过来就好，待秘钥生成完毕，会得到两个文件id_rsa和id_rsa.pub，用带格式的记事本打开id_rsa.pub，Ctrl + a复制里面的所有内容，然后进入 将复制的内容粘贴到Key的输入框，随便写好Title里面的内容，点击Add SSH key按钮即可。 创建完成后先放一边，后面会用到。 三、Hexo 使用命令在gitbash中使用 安装 HEXO$ npm install hexo -g 安装完成后 hexo -v 安装成功！ 初始化框架文件$ hexo init 看到 Start blogging with Hexo！ 结尾，表示初始化成功。 生成网站静态文件到默认设置的 public 文件夹$ hexo g 启动本地服务器$ hexo s 现在可以本地测试了。 四、关联Hexo和Github找到_config.yml文件，修改如下： deploy: type: git repo: https://github.com/youlicai/youlica.github.com.git branch: master $ hexo d 发布可能会出现以下几个情况： 1. 解决方案：执行如下语句后， 再部署即可：$ npm install hexo-deployer-git –save 2. 可将_config.yml中的repo修改为如下标准格式： deploy: type: git repo: https://用户名:密码@github.com/youlicai/youlica.github.com.git branch: master 发布成功！]]></content>
+      <categories>
+        <category>其他</category>
+      </categories>
+      <tags>
+        <tag>Github</tag>
+      </tags>
+  </entry>
+</search>
